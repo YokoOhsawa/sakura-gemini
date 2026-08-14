@@ -11,7 +11,7 @@ import streamlit as st
 # ==============================================================================
 # 0. ページ設定＆クライアント初期化
 # ==============================================================================
-st.set_page_config(page_title="桜🌸Gemini", page_icon="🌸", layout="centered")
+st.set_page_config(page_title="桜🌸Gemini", page_icon="Gemini_Generated_Image_hqicthqicthqicth.png", layout="centered")
 
 API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSyDN5BZrUT-B_VYa3_jt5wtYQnd_zbCNhYY")
 client = genai.Client(api_key=API_KEY)
