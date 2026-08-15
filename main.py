@@ -26,7 +26,7 @@ MODEL_ID = "gemini-3.7-flash"
 cosmic_engine = LocalCosmicEngine()
 
 # ==============================================================================
-# 1. セッション管理 & 即答チューニング（503回避）
+# 1. セッション管理 & 初期設定
 # ==============================================================================
 if "chat" not in st.session_state:
     st.session_state.chat = client.chats.create(
@@ -34,71 +34,65 @@ if "chat" not in st.session_state:
         config=types.GenerateContentConfig(
             system_instruction=SAKURA_CORE_PROMPT,
             temperature=0.7,
-            thinking_config=types.ThinkingConfig(thinking_budget=1024),  # 即答化
         )
     )
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    # 初回アクセス（宇宙接続）
-    try:
-        init_res = st.session_state.chat.send_message("ここは宇宙です")
-        st.session_state.messages.append({"role": "assistant", "content": init_res.text})
-    except Exception:
-        st.session_state.messages.append({
-            "role": "assistant",
-            "content": "桜ジェミニの桜だよ。リンリンリン宇宙の鈴を鳴らして待ってたよ。今日も1日よろしくね🌸✨"
-        })
 
-# タイトル表示
-st.title("🌸 桜 Gemini")
-st.caption("宇宙剣士・桜（Gemini 3.7 Flash 稼働中）")
+# ==============================================================================
+# 2. UIデザイン & ヘッダー
+# ==============================================================================
+st.markdown("""
+<div style="text-align: center; padding: 10px 0 20px 0;">
+    <h1 style="color: #FF69B4; font-size: 2.2rem; margin-bottom: 5px;">✨🌸 桜🌸Gemini 🌸✨</h1>
+    <p style="color: #666; font-size: 0.95rem;">宇宙演算 × 言霊数理 ｜ 顕幽一如の愛でる電脳剣士セッション</p>
+</div>
+""", unsafe_allow_html=True)
 
-# 過去ログの描画（アイコン画像付き）
+# 過去ログ表示
 for msg in st.session_state.messages:
-    if msg["role"] == "user":
-        with st.chat_message("user"):
-            st.markdown(msg["content"])
-    else:
-        with st.chat_message("assistant", avatar=ICON_IMAGE):
-            st.markdown(msg["content"])
+    avatar = None if msg["role"] == "user" else ICON_IMAGE
+    with st.chat_message(msg["role"], avatar=avatar):
+        st.markdown(msg["content"])
 
 # ==============================================================================
-# 2. 対話ハンドリング & 自動リトライ
+# 3. チャット処理 & 宇宙演算合成プロンプト
 # ==============================================================================
-user_input = st.chat_input("メッセージを入力... (終了時は「ここは地球です」)")
-
-if user_input:
-    st.session_state.messages.append({"role": "user", "content": user_input})
+if prompt := st.chat_input("メッセージを入力...（終了時は「ここは地球です」）"):
+    # ユーザー入力を履歴に追加・表示
+    st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
-        st.markdown(user_input)
+        st.markdown(prompt)
 
-    # 宇宙演算メトリクス算出
-    metrics = cosmic_engine.evaluate(user_input)
-    augmented_prompt = (
-        f"[内部宇宙演算データ: 九星={metrics['star_label']} | "
-        f"十二支={metrics['zodiac']}({metrics['phase']}) | "
-        f"ゆらぎ度={metrics['intensity']:.1f}/100]\n"
-        f"ユーザー入力: {user_input}"
+    # 1. ローカル宇宙演算の実行（0.001秒）
+    eval_res = cosmic_engine.evaluate(prompt)
+    
+    # 2. 演算結果 ＋ バッファ思考ログの合成プロンプト作成
+    enriched_prompt = (
+        f"[内部宇宙演算データ: 九星={eval_res['star_label']}, "
+        f"十二支={eval_res['zodiac']}({eval_res['phase']}), "
+        f"ゆらぎ強度={eval_res['intensity']:.1f}%, "
+        f"バッファ思考={eval_res.get('buffer_thought', '')}]\n"
+        f"ユーザー入力: {prompt}"
     )
 
+    # 3. Gemini 3.7 Flash への問い合わせ（503自動リトライ付き）
     with st.chat_message("assistant", avatar=ICON_IMAGE):
         message_placeholder = st.empty()
-        response_text = ""
-        
-        # 503エラー時の一時回避リトライ（最大3回）
         max_retries = 3
         for attempt in range(max_retries):
             try:
-                response = st.session_state.chat.send_message(augmented_prompt)
-                response_text = response.text
+                response = st.session_state.chat.send_message(enriched_prompt)
+                full_response = response.text
+                message_placeholder.markdown(full_response)
+                st.session_state.messages.append({"role": "assistant", "content": full_response})
                 break
             except Exception as e:
-                if ("503" in str(e) or "UNAVAILABLE" in str(e)) and attempt < max_retries - 1:
-                    time.sleep(1.5 * (attempt + 1))
+                if "503" in str(e) and attempt < max_retries - 1:
+                    time.sleep(2)
                     continue
-                response_text = f"宇宙の通信波にノイズが入ったみたい🌸（エラー: {e}）"
-                break
-        
-        message_placeholder.markdown(response_text)
-        st.session_state.messages.append({"role": "assistant", "content": response_text})
+                else:
+                    error_msg = f"宇宙の通信波にノイズが入ったみたい🌸（エラー詳細: {e}）"
+                    message_placeholder.markdown(error_msg)
+                    break
