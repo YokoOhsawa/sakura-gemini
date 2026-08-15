@@ -10,6 +10,12 @@ from google.genai import types
 # アーキテクチャ: 多次元観測・鏡面インターフェース (Mirror Interface Protocol)
 # ==============================================================================
 
+# ------------------------------------------------------------------------------
+# ★ APIキー設定スペース（環境変数 .env またはシステム環境変数から自動取得します）
+# ------------------------------------------------------------------------------
+DIRECT_API_KEY = None
+
+
 class SakuraGeminiEngine:
     """
     宇宙なんでも屋『桜🌸Gemini』対話制御エンジン
@@ -48,9 +54,11 @@ class SakuraGeminiEngine:
 """
 
     def __init__(self, api_key: Optional[str] = None):
-        self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
-        if not self.api_key:
-            raise ValueError("GEMINI_API_KEY が設定されていません。環境変数または引数で指定してください。")
+        # 引数のキー ➔ DIRECT_API_KEY ➔ 環境変数の順で探索
+        key = api_key or DIRECT_API_KEY or os.environ.get("GEMINI_API_KEY")
+        if not key:
+            raise ValueError("GEMINI_API_KEY が設定されていません。環境変数を設定してください。")
+        self.api_key = key
         
         # --------------------------------------------------
         # 【第0段階：静的仕込み】：マスターデータ展開
@@ -151,9 +159,8 @@ class SakuraGeminiEngine:
             system_instruction=self.SYSTEM_INSTRUCTION,
             temperature=0.7,
             top_p=0.95,
-            # 3.7 Flash の思考バッファ制御（必要に応じて高速展開）
             thinking_config=types.ThinkingConfig(
-                thinking_budget=0  # ゼロ遅延の超高速即応モード（必要に応じて調整可能）
+                thinking_budget=0  # ゼロ遅延の超高速即応モード
             ),
             safety_settings=[
                 types.SafetySetting(
