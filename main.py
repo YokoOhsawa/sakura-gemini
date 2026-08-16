@@ -16,9 +16,9 @@ if user_input:
   prompt = f"以下の内容を元にして、父親にあてた丁寧で温かみのある手紙・メッセージ文面を作成してください。\n\n内容: {user_input}"
 
   with st.spinner("量子演算中... 文面を生成しています"):
-    # 最新の gemini-2.5-flash または指定モデルで実行
+    # モデルを最新の gemini-3.7-flash へ変更
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3.7-flash",
         contents=prompt,
     )
     st.write("### 生成されたメッセージ文面")
