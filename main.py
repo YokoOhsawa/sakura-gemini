@@ -52,17 +52,14 @@ class BitLogicEngine:
         return target_bit, intensity, self.mapping[target_bit]
 
 # ==========================================
-# 4. API初期化（第一優先接続：自動フォールバック）
+# 4. API初期化（固定紐付けモードへ最適化）
 # ==========================================
-# secrets または環境変数、なければサイドバーから取得
-api_key = (
-    st.secrets.get("GEMINI_API_KEY") 
-    or os.environ.get("GEMINI_API_KEY") 
-    or st.sidebar.text_input("Gemini API Key", type="password")
-)
+# 【カチッと紐付け設定】あなたのAPIキーをここに直接セットします
+# ※これによりサイドバーへの手動入力が不要になり、起動と同時に即座に自動接続されます
+api_key = "ここにあなたのGeminiのAPIキーを貼り付ける"
 
-if not api_key:
-    st.info("👈 サイドバーに Gemini API Key を入力すると即座に接続されます！")
+if not api_key or api_key == "ここにあなたのGeminiのAPIキーを貼り付ける":
+    st.error("🚨 APIキーが正しく設定されていません。コード内の該当箇所にAPIキーを貼り付けてください。")
     st.stop()
 
 # API接続
@@ -77,22 +74,27 @@ if "engine" not in st.session_state:
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
-# チャットセッション（高速Flashモデル・第一優先接続）
+# チャットセッション（最新最速のGemini 3.7 Flashモデルを直撃指定）
 if "chat_session" not in st.session_state:
-    # 接続安定性と速度最優先：gemini-2.0-flash / gemini-1.5-flash
     try:
+        # 最新の超高性能モデル「gemini-3.7-flash」で起動
         model = genai.GenerativeModel(
-            model_name="gemini-2.0-flash",
+            model_name="gemini-3.7-flash",
             system_instruction=SYSTEM_INSTRUCTION
         )
         st.session_state.chat_session = model.start_chat(history=[])
-    except Exception:
-        # フォールバック
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
-            system_instruction=SYSTEM_INSTRUCTION
-        )
-        st.session_state.chat_session = model.start_chat(history=[])
+    except Exception as e:
+        # 万が一、ライブラリのバージョンが古くて認識しない場合の安全弁
+        st.warning(f"gemini-3.7-flashでの接続に失敗しました。2.5-flashにフォールバックします。エラー: {e}")
+        try:
+            model = genai.GenerativeModel(
+                model_name="gemini-2.5-flash",
+                system_instruction=SYSTEM_INSTRUCTION
+            )
+            st.session_state.chat_session = model.start_chat(history=[])
+        except Exception as e2:
+            st.error(f"モデルの起動に致命的なエラーが発生しました: {e2}")
+            st.stop()
 
 # ==========================================
 # 6. UI表示 & ストレスフリーなチャット画面
@@ -133,7 +135,8 @@ if prompt := st.chat_input("今どんな感じ？トラブルでも雑談でも�
             )
 
             for chunk in response_stream:
-                if chunk.text:
+                # Python 3.10以降の特定の挙動に合わせ、安全にテキストを抽出
+                if chunk and hasattr(chunk, 'text') and chunk.text:
                     full_response += chunk.text
                     message_placeholder.markdown(full_response + "▌")
             
@@ -143,4 +146,5 @@ if prompt := st.chat_input("今どんな感じ？トラブルでも雑談でも�
             st.session_state.messages.append({"role": "assistant", "content": full_response})
 
         except Exception as e:
-            st.error(f"接続エラーが発生しました: {e}")
+            st.error(f"接続エラーが発生しました。時間を置いて試すか、ネットワーク設定やAPIキーを確認してください。詳細: {e}")
+
