@@ -1,12 +1,18 @@
 import os
 import re
+from pathlib import Path
 from typing import Optional
+from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 
 # ==============================================================================
 # 桜🌸Gemini (Sakura) - 会話継続型・低ストレス対話フレームワーク
 # ==============================================================================
+
+# 実行ファイルと同じフォルダ（または親フォルダ）にある .env を確実に読み込む
+env_path = Path(__file__).resolve().parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 DIRECT_API_KEY = None
 
@@ -27,19 +33,19 @@ class SakuraGeminiEngine:
 【会話のガイドライン】
 - 普段の雑談や軽いラリーは、短くテンポよくフランクに返す（毎回ガチガチの定型文にしない）。
 - 相談やトラブル、コマンド指定時のみ以下の【3段構造】でスッキリ整頓して返す：
-  1. 【からくり (Scan)】：詰まりの正体＋色（青:着火/赤:全開/黒:収納）
-  2. 【踏み切り板 (Shift)】：ステージジャンプの定義
-  3. 【次の一手 (Command)】：極小の具体的1アクション
+ 1. 【からくり (Scan)】：詰まりの正体＋色（青:着火/赤:全開/黒:収納）
+ 2. 【踏み切り板 (Shift)】：ステージジャンプの定義
+ 3. 【次の一手 (Command)】：極小の具体的1アクション
 """
 
     def __init__(self, api_key: Optional[str] = None):
         key = api_key or DIRECT_API_KEY or os.environ.get("GEMINI_API_KEY")
         if not key:
-            raise ValueError("GEMINI_API_KEY が設定されていません。")
+            raise ValueError(f"GEMINI_API_KEY が設定されていません。探した場所: {env_path}")
         self.api_key = key
 
         self.client = genai.Client(api_key=self.api_key)
-        self.model_name = "gemini-3.7-flash"
+        self.model_name = "gemini-3.7-flash"  # ★ 指定の gemini-3.7-flash で固定
 
         # 軽量マスターデータ
         self.stars = {
@@ -98,9 +104,9 @@ class SakuraGeminiEngine:
 # ==============================================================================
 if __name__ == "__main__":
     sakura = SakuraGeminiEngine()
-    
+   
     print("=== 桜🌸Geminiとの対話スタート（'exit'で終了） ===")
-    
+   
     # 連続会話シミュレーション
     test_conversations = [
         "さくらちゃん、今日ちょっと疲れちゃったな〜",
